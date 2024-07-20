@@ -2,9 +2,9 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { AwsServerlessTextractSolutionStackProps } from './AwsServerlessTextractSolutionStackProps';
-import { AwsServerlessS3StackProps } from './constructs/AwsServerlessS3StackProps';
+import { AwsServerlessS3StackProps } from './constructs/s3-stack/AwsServerlessS3StackProps';
 import { checkEnvVariables } from '../utils/check-environment-variable';
-import { AwsServerlessS3Stack } from './constructs/aws-serverless-s3-stack';
+import { AwsServerlessS3Stack } from './constructs/s3-stack/aws-serverless-s3-stack';
 
 export class AwsServerlessTextractSolutionStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: AwsServerlessTextractSolutionStackProps) {

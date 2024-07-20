@@ -107,6 +107,10 @@ export class AwsServerlessDataTransformStack extends NestedStack {
             timeout: cdk.Duration.seconds(60), // one minute
             architecture: lambda.Architecture.ARM_64,
             runtimeManagementMode: lambda.RuntimeManagementMode.AUTO,
+            environment: {
+                S3_PDF_FILES_BUCKET_NAME: s3PdfFilesBucket.bucketName,
+                S3_FILE_TRANSFER_QUEUE_URL: s3PdfFileUploadQueue.queueUrl,
+            },
             logGroup: new cdk.aws_logs.LogGroup(this, `${props.resourcePrefix}-s3ObjectTransferLambdaFnLogGroup`, {
                 logGroupName: `${props.resourcePrefix}-s3ObjectTransferLambdaFnLogGroup`,
                 removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -139,6 +143,10 @@ export class AwsServerlessDataTransformStack extends NestedStack {
             runtimeManagementMode: lambda.RuntimeManagementMode.AUTO,
             memorySize: 1024,
             timeout: cdk.Duration.seconds(60), // 60 seconds
+            environment: {
+                S3_PDF_FILES_BUCKET_NAME: s3PdfFilesBucket.bucketName,
+                S3_IMAGE_TRANSFER_QUEUE_URL: s3ImageFileUploadQueue.queueUrl,
+            },
             logGroup: new cdk.aws_logs.LogGroup(this, `${props.resourcePrefix}-fileTransformLambdaFnLogGroup`, {
                 logGroupName: `${props.resourcePrefix}-fileTransformLambdaFnLogGroup`,
                 removalPolicy: cdk.RemovalPolicy.DESTROY,

@@ -1,16 +1,13 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { AwsServerlessTextractSolutionStackProps } from './AwsServerlessTextractSolutionStackProps';
 
 export class AwsServerlessTextractSolutionStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: AwsServerlessTextractSolutionStackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
-
-    // example resource
-    // const queue = new sqs.Queue(this, 'AwsServerlessTextractSolutionQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
+    if (!props.resourcePrefix || !props.cdkDeployEnvironment || !props.appName) {
+      throw new Error('Missing required properties in CxObPrivateLlmProviderStackProps.');
+    }
   }
 }

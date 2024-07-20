@@ -93,21 +93,28 @@ export class AwsServerlessS3Stack extends NestedStack {
      * @throws {Error} If the lifecycle rule cannot be applied due to invalid parameters or AWS API errors.
      */
     createS3BucketLifecycleRule(s3Bucket: s3.Bucket, id: string) {
+        const ABORT_MULTIPART_UPLOAD_DAYS = 7;
+        const NONCURRENT_VERSION_EXPIRATION_DAYS = 365;
+        const INFREQUENT_ACCESS_TRANSITION_DAYS = 30;
+        const INTELLIGENT_TIERING_TRANSITION_DAYS = 60;
+
+        // Add lifecycle rule to abort incomplete multipart uploads after 7 days,
+        // transition objects to different storage classes, and expire noncurrent versions after 365 days.
         s3Bucket.addLifecycleRule({
             id: id,
-            abortIncompleteMultipartUploadAfter: cdk.Duration.days(7), // After 7 days, incomplete multipart uploads will be aborted
+            abortIncompleteMultipartUploadAfter: cdk.Duration.days(ABORT_MULTIPART_UPLOAD_DAYS), // After 7 days, incomplete multipart uploads will be aborted
             enabled: true,
-            noncurrentVersionExpiration: cdk.Duration.days(365),
+            noncurrentVersionExpiration: cdk.Duration.days(NONCURRENT_VERSION_EXPIRATION_DAYS),
             noncurrentVersionTransitions: [
                 {
                     storageClass: cdk.aws_s3.StorageClass.INFREQUENT_ACCESS, // Transition to Infrequent Access storage class after 30 days
-                    transitionAfter: cdk.Duration.days(30),
+                    transitionAfter: cdk.Duration.days(INFREQUENT_ACCESS_TRANSITION_DAYS),
                 },
             ],
             transitions: [
                 {
                     storageClass: cdk.aws_s3.StorageClass.INTELLIGENT_TIERING, // Transition to Intelligent Tiering storage class after 60 days
-                    transitionAfter: cdk.Duration.days(60),
+                    transitionAfter: cdk.Duration.days(INTELLIGENT_TIERING_TRANSITION_DAYS),
                 },
             ],
         });

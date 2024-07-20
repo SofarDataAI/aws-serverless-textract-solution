@@ -16,7 +16,20 @@ import { PythonFunction } from "@aws-cdk/aws-lambda-python-alpha";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 
+/**
+ * @class AwsServerlessDataTransformStack
+ * @extends {NestedStack}
+ * @description This class represents a nested stack for AWS Serverless Data Transform infrastructure.
+ * It sets up S3 buckets, SNS topics, SQS queues, and Lambda functions to handle file uploads and transformations.
+ */
 export class AwsServerlessDataTransformStack extends NestedStack {
+    /**
+     * @constructor
+     * @param {Construct} scope - The scope in which to define this construct.
+     * @param {string} id - The scoped construct ID.
+     * @param {AwsServerlessDataTransformStackProps} props - Properties for configuring the stack.
+     * @throws {Error} Throws an error if required properties are missing.
+     */
     constructor(scope: Construct, id: string, props: AwsServerlessDataTransformStackProps) {
         super(scope, id);
 
@@ -24,24 +37,38 @@ export class AwsServerlessDataTransformStack extends NestedStack {
         const s3MasterFilesBucket = s3.Bucket.fromBucketName(this, 's3MasterFilesBucket', props.masterBucketName);
         const s3PdfFilesBucket = s3.Bucket.fromBucketName(this, 's3PdfFilesBucket', props.pfdFilesBucketName);
 
-        // Define SNS topic for file upload notifications
-        const s3FileUploadSnsTopic = new sns.Topic(this, 's3FileUploadSnsTopic', {
+        /**
+         * @type {sns.Topic}
+         * @description SNS topic for file upload notifications.
+         */
+        const s3FileUploadSnsTopic: sns.Topic = new sns.Topic(this, 's3FileUploadSnsTopic', {
             topicName: `${props.resourcePrefix}-s3-file-upload-topic`,
             displayName: 'S3 File Upload Notifications',
             fifo: false, // Standard SNS topic for better scalability
         });
 
-        // Define SQS queues for PDF and image file processing
-        const s3PdfFileUploadQueue = new sqs.Queue(this, 's3PdfFileUploadQueue', {
+        /**
+         * @type {sqs.Queue}
+         * @description SQS queue for PDF file processing.
+         */
+        const s3PdfFileUploadQueue: sqs.Queue = new sqs.Queue(this, 's3PdfFileUploadQueue', {
             queueName: `${props.resourcePrefix}-pdf-file-upload-queue`,
             visibilityTimeout: cdk.Duration.seconds(300), // 5 minutes
             retentionPeriod: cdk.Duration.days(14),
+            encryption: sqs.QueueEncryption.SQS_MANAGED,
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
         });
 
-        const s3ImageFileUploadQueue = new sqs.Queue(this, 's3ImageFileUploadQueue', {
+        /**
+         * @type {sqs.Queue}
+         * @description SQS queue for image file processing.
+         */
+        const s3ImageFileUploadQueue: sqs.Queue = new sqs.Queue(this, 's3ImageFileUploadQueue', {
             queueName: `${props.resourcePrefix}-image-file-upload-queue`,
             visibilityTimeout: cdk.Duration.seconds(300), // 5 minutes
             retentionPeriod: cdk.Duration.days(14),
+            encryption: sqs.QueueEncryption.SQS_MANAGED,
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
         });
 
         // Subscribe SQS queues to SNS topic with message filtering
@@ -67,7 +94,11 @@ export class AwsServerlessDataTransformStack extends NestedStack {
             new s3n.SnsDestination(s3FileUploadSnsTopic),
         );
 
-        const s3ObjectTransferLambdaFn = new LlrtFunction(this, `${props.resourcePrefix}-s3ObjectTransferLambdaFn`, {
+        /**
+         * @type {LlrtFunction}
+         * @description Lambda function for S3 object transfer.
+         */
+        const s3ObjectTransferLambdaFn: LlrtFunction = new LlrtFunction(this, `${props.resourcePrefix}-s3ObjectTransferLambdaFn`, {
             functionName: `${props.resourcePrefix}-s3ObjectTransferLambdaFn`,
             runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
             entry: path.join(__dirname, '../../../src/lambdas/s3-file-transfer/index.ts'),
@@ -95,7 +126,11 @@ export class AwsServerlessDataTransformStack extends NestedStack {
             depsLockFilePath: path.join(__dirname, '../../../src/lambdas/s3-file-transfer/package-lock.json'),
         });
 
-        const fileTransformLambdaFn = new PythonFunction(this, `${props.resourcePrefix}-fileTransformLambdaFn`, {
+        /**
+         * @type {PythonFunction}
+         * @description Lambda function for file transformation.
+         */
+        const fileTransformLambdaFn: PythonFunction = new PythonFunction(this, `${props.resourcePrefix}-fileTransformLambdaFn`, {
             functionName: `${props.resourcePrefix}-fileTransformLambdaFn`,
             runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
             entry: path.join(__dirname, '../../../src/lambdas/s3-file-transform'),

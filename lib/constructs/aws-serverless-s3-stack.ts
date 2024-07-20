@@ -32,28 +32,28 @@ export class AwsServerlessS3Stack extends NestedStack {
         super(scope, id, props);
 
         // create master S3 bucket
-        const masterS3Bucket = this.createS3Bucket(this, `${props.resourcePrefix}-${props.cdkDeployRegion}-${props.masterBucketName}`, cdk.RemovalPolicy.DESTROY);
+        const masterS3Bucket = this.createS3Bucket(this, `${props.resourcePrefix}-${props.masterBucketName}`, cdk.RemovalPolicy.DESTROY);
 
         // apply life cycle rules for master bucket
-        this.createS3BucketLifecycleRule(masterS3Bucket, `${props.resourcePrefix}-${props.cdkDeployRegion}-${props.masterBucketName}-LifecycleRule`);
+        this.createS3BucketLifecycleRule(masterS3Bucket, `${props.resourcePrefix}-${props.masterBucketName}-LifecycleRule`);
 
         // assign the master bucket as an input for the next stack
         this.masterS3BucketName = masterS3Bucket.bucketName;
 
         // create pdf files S3 bucket
-        const pfdFilesBucket = this.createS3Bucket(this, `${props.resourcePrefix}-${props.cdkDeployRegion}-${props.pfdFilesBucketName}`, cdk.RemovalPolicy.DESTROY);
+        const pfdFilesBucket = this.createS3Bucket(this, `${props.resourcePrefix}-${props.pfdFilesBucketName}`, cdk.RemovalPolicy.DESTROY);
 
         // apply life cycle rules for pdf files bucket
-        this.createS3BucketLifecycleRule(pfdFilesBucket, `${props.resourcePrefix}-${props.cdkDeployRegion}-${props.pfdFilesBucketName}-LifecycleRule`);
+        this.createS3BucketLifecycleRule(pfdFilesBucket, `${props.resourcePrefix}-${props.pfdFilesBucketName}-LifecycleRule`);
 
         // assign the pdf files bucket as an input for the next stack
         this.pfdFilesBucketName = pfdFilesBucket.bucketName;
 
         // create json files S3 bucket
-        const jsonFilesBucket = this.createS3Bucket(this, `${props.resourcePrefix}-${props.cdkDeployRegion}-${props.jsonFilesBucketName}`, cdk.RemovalPolicy.DESTROY);
+        const jsonFilesBucket = this.createS3Bucket(this, `${props.resourcePrefix}-${props.jsonFilesBucketName}`, cdk.RemovalPolicy.DESTROY);
 
         // apply life cycle rules for json files bucket
-        this.createS3BucketLifecycleRule(jsonFilesBucket, `${props.resourcePrefix}-${props.cdkDeployRegion}-${props.jsonFilesBucketName}-LifecycleRule`);
+        this.createS3BucketLifecycleRule(jsonFilesBucket, `${props.resourcePrefix}-${props.jsonFilesBucketName}-LifecycleRule`);
 
         // assign the json files bucket as an input for the next stack
         this.jsonFilesBucketName = jsonFilesBucket.bucketName;

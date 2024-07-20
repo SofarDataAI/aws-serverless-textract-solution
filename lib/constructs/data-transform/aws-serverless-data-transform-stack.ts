@@ -34,14 +34,14 @@ export class AwsServerlessDataTransformStack extends NestedStack {
         super(scope, id);
 
         // Retrieve the master S3 bucket and PDF files bucket
-        const s3MasterFilesBucket = s3.Bucket.fromBucketName(this, 's3MasterFilesBucket', props.masterBucketName);
-        const s3PdfFilesBucket = s3.Bucket.fromBucketName(this, 's3PdfFilesBucket', props.pfdFilesBucketName);
+        const s3MasterFilesBucket = s3.Bucket.fromBucketName(this, `${props.resourcePrefix}-s3MasterFilesBucket`, props.masterBucketName);
+        const s3PdfFilesBucket = s3.Bucket.fromBucketName(this, `${props.resourcePrefix}-s3PdfFilesBucket`, props.pfdFilesBucketName);
 
         /**
          * @type {sns.Topic}
          * @description SNS topic for file upload notifications.
          */
-        const s3FileUploadSnsTopic: sns.Topic = new sns.Topic(this, 's3FileUploadSnsTopic', {
+        const s3FileUploadSnsTopic: sns.Topic = new sns.Topic(this, `${props.resourcePrefix}-s3FileUploadSnsTopic`, {
             topicName: `${props.resourcePrefix}-s3-file-upload-topic`,
             displayName: 'S3 File Upload Notifications',
             fifo: false, // Standard SNS topic for better scalability
@@ -51,7 +51,7 @@ export class AwsServerlessDataTransformStack extends NestedStack {
          * @type {sqs.Queue}
          * @description SQS queue for PDF file processing.
          */
-        const s3PdfFileUploadQueue: sqs.Queue = new sqs.Queue(this, 's3PdfFileUploadQueue', {
+        const s3PdfFileUploadQueue: sqs.Queue = new sqs.Queue(this, `${props.resourcePrefix}-s3PdfFileUploadQueue`, {
             queueName: `${props.resourcePrefix}-pdf-file-upload-queue`,
             visibilityTimeout: cdk.Duration.seconds(300), // 5 minutes
             retentionPeriod: cdk.Duration.days(14),
@@ -63,7 +63,7 @@ export class AwsServerlessDataTransformStack extends NestedStack {
          * @type {sqs.Queue}
          * @description SQS queue for image file processing.
          */
-        const s3ImageFileUploadQueue: sqs.Queue = new sqs.Queue(this, 's3ImageFileUploadQueue', {
+        const s3ImageFileUploadQueue: sqs.Queue = new sqs.Queue(this, `${props.resourcePrefix}-s3ImageFileUploadQueue`, {
             queueName: `${props.resourcePrefix}-image-file-upload-queue`,
             visibilityTimeout: cdk.Duration.seconds(300), // 5 minutes
             retentionPeriod: cdk.Duration.days(14),
@@ -165,7 +165,7 @@ export class AwsServerlessDataTransformStack extends NestedStack {
         s3ImageFileUploadQueue.grantConsumeMessages(fileTransformLambdaFn);
 
         // grant permission for s3PdfFileUploadQueue to invoke s3ObjectTransferLambdaFn
-        s3ObjectTransferLambdaFn.addPermission('AllowSQSInvocation', {
+        s3ObjectTransferLambdaFn.addPermission(`${props.resourcePrefix}-s3ObjectTransferLambdaFn-AllowSQSInvocation`, {
             action: 'lambda:InvokeFunction',
             principal: new iam.ServicePrincipal('sqs.amazonaws.com'),
             sourceArn: s3PdfFileUploadQueue.queueArn,
@@ -180,7 +180,7 @@ export class AwsServerlessDataTransformStack extends NestedStack {
         }));
 
         // grant permission for s3ImageFileUploadQueue to invoke fileTransformLambdaFn
-        fileTransformLambdaFn.addPermission('AllowSQSInvocation', {
+        fileTransformLambdaFn.addPermission(`${props.resourcePrefix}-fileTransformLambdaFn-AllowSQSInvocation`, {
             action: 'lambda:InvokeFunction',
             principal: new iam.ServicePrincipal('sqs.amazonaws.com'),
             sourceArn: s3ImageFileUploadQueue.queueArn,

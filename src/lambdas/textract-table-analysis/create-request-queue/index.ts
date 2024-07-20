@@ -29,9 +29,7 @@ export const handler = async (event: SQSEvent): Promise<void> => {
     // print out event.Records
     console.log(`${prefix} - sqsEvent.Records: ${JSON.stringify(event.Records)}`);
 
-    const sqsEventRecords = event.Records;
-
-    for (const sqsEventRecord of sqsEventRecords) {
+    await Promise.all(event.Records.map(async (sqsEventRecord) => {
         console.log(`${prefix} - event body: ${sqsEventRecord.body}`);
         const s3Event = JSON.parse(sqsEventRecord.body) as S3Event;
 
@@ -118,7 +116,7 @@ export const handler = async (event: SQSEvent): Promise<void> => {
         else {
             console.log(`${prefix} - s3Event is undefined or s3Event.Records is not an array.`);
         }
-    }
+    }));
 };
 
 /**

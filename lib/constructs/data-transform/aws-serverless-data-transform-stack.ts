@@ -26,7 +26,7 @@ export class AwsServerlessDataTransformStack extends NestedStack {
         const s3ObjectTransferLambdaFn = new LlrtFunction(this, `${props.resourcePrefix}-s3ObjectTransferLambdaFn`, {
             functionName: `${props.resourcePrefix}-s3ObjectTransferLambdaFn`,
             runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
-            entry: path.join(__dirname, '../../src/lambdas/s3-file-transfer/index.ts'),
+            entry: path.join(__dirname, '../../../src/lambdas/s3-file-transfer/index.ts'),
             handler: 'handler',
             llrtVersion: 'latest',
             timeout: cdk.Duration.seconds(60), // one minute
@@ -47,21 +47,21 @@ export class AwsServerlessDataTransformStack extends NestedStack {
                 format: OutputFormat.ESM,
                 forceDockerBundling: true,
             },
-            projectRoot: path.join(__dirname, '../../src/lambdas/s3-file-transfer'),
-            depsLockFilePath: path.join(__dirname, '../../src/lambdas/s3-file-transfer/package-lock.json'),
+            projectRoot: path.join(__dirname, '../../../src/lambdas/s3-file-transfer'),
+            depsLockFilePath: path.join(__dirname, '../../../src/lambdas/s3-file-transfer/package-lock.json'),
         });
 
         const fileTransformLambdaFn = new PythonFunction(this, `${props.resourcePrefix}-fileTransformLambdaFn`, {
             functionName: `${props.resourcePrefix}-fileTransformLambdaFn`,
             runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
-            entry: path.join(__dirname, '../src/lambdas/s3-file-transform'),
+            entry: path.join(__dirname, '../../../src/lambdas/s3-file-transform'),
             handler: "handler",
             architecture: lambda.Architecture.ARM_64,
             runtimeManagementMode: lambda.RuntimeManagementMode.AUTO,
             memorySize: 1024,
             timeout: cdk.Duration.seconds(60), // 60 seconds
-            logGroup: new cdk.aws_logs.LogGroup(this, `${props.resourcePrefix}-fileTransformLambdaFn-LogGroup`, {
-                logGroupName: `${props.resourcePrefix}-fileTransformLambdaFn-LogGroup`,
+            logGroup: new cdk.aws_logs.LogGroup(this, `${props.resourcePrefix}-fileTransformLambdaFnLogGroup`, {
+                logGroupName: `${props.resourcePrefix}-fileTransformLambdaFnLogGroup`,
                 removalPolicy: cdk.RemovalPolicy.DESTROY,
                 retention: cdk.aws_logs.RetentionDays.ONE_WEEK,
             }),

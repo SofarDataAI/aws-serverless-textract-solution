@@ -4,24 +4,68 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as path from 'path';
 import * as cdk from "aws-cdk-lib";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
+import * as s3n from "aws-cdk-lib/aws-s3-notifications";
 
 import { AwsServerlessDataTransformStackProps } from "./AwsServerlessDataTransformStackProps";
 import { OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import { LlrtFunction } from "cdk-lambda-llrt";
 import { PythonFunction } from "@aws-cdk/aws-lambda-python-alpha";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 
 export class AwsServerlessDataTransformStack extends NestedStack {
     constructor(scope: Construct, id: string, props: AwsServerlessDataTransformStackProps) {
         super(scope, id);
 
-        // retreive the master S3 bucket and PDF files bucket
+        // Retrieve the master S3 bucket and PDF files bucket
         const s3MasterFilesBucket = s3.Bucket.fromBucketName(this, 's3MasterFilesBucket', props.masterBucketName);
         const s3PdfFilesBucket = s3.Bucket.fromBucketName(this, 's3PdfFilesBucket', props.pfdFilesBucketName);
 
-        // todo define sqs named s3PdfFileUploadQueue
-        // todo define sqs named s3ImageFileUploadQueue
+        // Define SNS topic for file upload notifications
+        const s3FileUploadSnsTopic = new sns.Topic(this, 's3FileUploadSnsTopic', {
+            topicName: `${props.resourcePrefix}-s3-file-upload-topic`,
+            displayName: 'S3 File Upload Notifications',
+            fifo: false, // Standard SNS topic for better scalability
+        });
 
-        // todo define sns with file extension filter, named s3FileUploadSnsTopic
+        // Define SQS queues for PDF and image file processing
+        const s3PdfFileUploadQueue = new sqs.Queue(this, 's3PdfFileUploadQueue', {
+            queueName: `${props.resourcePrefix}-pdf-file-upload-queue`,
+            visibilityTimeout: cdk.Duration.seconds(300), // 5 minutes
+            retentionPeriod: cdk.Duration.days(14),
+        });
+
+        const s3ImageFileUploadQueue = new sqs.Queue(this, 's3ImageFileUploadQueue', {
+            queueName: `${props.resourcePrefix}-image-file-upload-queue`,
+            visibilityTimeout: cdk.Duration.seconds(300), // 5 minutes
+            retentionPeriod: cdk.Duration.days(14),
+        });
+
+        // Subscribe SQS queues to SNS topic with message filtering
+        s3FileUploadSnsTopic.addSubscription(new subscriptions.SqsSubscription(s3PdfFileUploadQueue, {
+            filterPolicy: {
+                fileExtension: sns.SubscriptionFilter.stringFilter({
+                    allowlist: ['.pdf'],
+                }),
+            },
+        }));
+
+        s3FileUploadSnsTopic.addSubscription(new subscriptions.SqsSubscription(s3ImageFileUploadQueue, {
+            filterPolicy: {
+                fileExtension: sns.SubscriptionFilter.stringFilter({
+                    allowlist: ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'],
+                }),
+            },
+        }));
+
+        // Configure S3 bucket to send notifications to SNS topic
+        s3MasterFilesBucket.addEventNotification(
+            s3.EventType.OBJECT_CREATED,
+            new s3n.SnsDestination(s3FileUploadSnsTopic),
+        );
 
         const s3ObjectTransferLambdaFn = new LlrtFunction(this, `${props.resourcePrefix}-s3ObjectTransferLambdaFn`, {
             functionName: `${props.resourcePrefix}-s3ObjectTransferLambdaFn`,
@@ -66,5 +110,45 @@ export class AwsServerlessDataTransformStack extends NestedStack {
                 retention: cdk.aws_logs.RetentionDays.ONE_WEEK,
             }),
         });
+
+        // Grant necessary permissions
+        s3MasterFilesBucket.grantRead(s3ObjectTransferLambdaFn);
+        s3PdfFilesBucket.grantWrite(s3ObjectTransferLambdaFn);
+
+        s3MasterFilesBucket.grantRead(fileTransformLambdaFn);
+        s3PdfFilesBucket.grantWrite(fileTransformLambdaFn);
+
+        s3PdfFileUploadQueue.grantConsumeMessages(s3ObjectTransferLambdaFn);
+        s3ImageFileUploadQueue.grantConsumeMessages(fileTransformLambdaFn);
+
+        // grant permission for s3PdfFileUploadQueue to invoke s3ObjectTransferLambdaFn
+        s3ObjectTransferLambdaFn.addPermission('AllowSQSInvocation', {
+            action: 'lambda:InvokeFunction',
+            principal: new iam.ServicePrincipal('sqs.amazonaws.com'),
+            sourceArn: s3PdfFileUploadQueue.queueArn,
+        });
+
+        // Add the SQS queue as an event source for the s3ObjectTransferLambdaFn function
+        s3ObjectTransferLambdaFn.addEventSource(new lambdaEventSources.SqsEventSource(s3PdfFileUploadQueue, {
+            batchSize: 10, // Set the batch size to 10
+            reportBatchItemFailures: true, // Allow functions to return partially successful responses for a batch of records.
+            enabled: true,
+            maxBatchingWindow: cdk.Duration.seconds(60), // 60 seconds
+        }));
+
+        // grant permission for s3ImageFileUploadQueue to invoke fileTransformLambdaFn
+        fileTransformLambdaFn.addPermission('AllowSQSInvocation', {
+            action: 'lambda:InvokeFunction',
+            principal: new iam.ServicePrincipal('sqs.amazonaws.com'),
+            sourceArn: s3ImageFileUploadQueue.queueArn,
+        });
+
+        // Add the SQS queue as an event source for the fileTransformLambdaFn function
+        fileTransformLambdaFn.addEventSource(new lambdaEventSources.SqsEventSource(s3ImageFileUploadQueue, {
+            batchSize: 10, // Set the batch size to 10
+            reportBatchItemFailures: true, // Allow functions to return partially successful responses for a batch of records.
+            enabled: true,
+            maxBatchingWindow: cdk.Duration.seconds(60), // 60 seconds
+        }));
     }
 }

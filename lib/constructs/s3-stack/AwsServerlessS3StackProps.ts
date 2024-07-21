@@ -1,5 +1,5 @@
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import { AwsServerlessTextractSolutionStackProps } from "../AwsServerlessTextractSolutionStackProps";
+import { AwsServerlessTextractSolutionStackProps } from "../../AwsServerlessTextractSolutionStackProps";
 
 /**
  * Properties for defining a AwsServerlessS3StackProps.

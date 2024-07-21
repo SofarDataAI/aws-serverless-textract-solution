@@ -51,6 +51,19 @@ export class AwsServerlessDataIngestionStack extends NestedStack {
             removalPolicy: cdk.RemovalPolicy.DESTROY,
         });
 
+        // Define an IAM role for Amazon Textract service to access pfdFilesBucket
+        const textractServiceRole = new iam.Role(this, `${props.resourcePrefix}-TextractServiceRole`, {
+            assumedBy: new iam.ServicePrincipal('textract.amazonaws.com'),
+            managedPolicies: [
+                iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonTextractFullAccess'),
+            ],
+            roleName: `${props.resourcePrefix}-TextractServiceRole`,
+            description: 'IAM role for Amazon Textract service to access S3 buckets.',
+        });
+
+        // Grant Textract service role permissions to getObject and getObjectAcl from pfdFilesBucket
+        pfdFilesBucket.grantRead(textractServiceRole);
+
         // lambda function to start a Textract job for analyzing tables in a document
         const textAnalysisLambdaFn = new NodejsFunction(this, `${props.resourcePrefix}-textAnalysisLambdaFn`, {
             runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
@@ -79,6 +92,23 @@ export class AwsServerlessDataIngestionStack extends NestedStack {
             },
             projectRoot: path.join(__dirname, '../../../src/lambdas/textract-table-analysis/create-request-queue'),
             depsLockFilePath: path.join(__dirname, '../../../src/lambdas/textract-table-analysis/create-request-queue/package-lock.json'),
+            role: new cdk.aws_iam.Role(this, `${props.resourcePrefix}-textAnalysisLambdaFnInlineRole`, {
+                assumedBy: new cdk.aws_iam.ServicePrincipal('lambda.amazonaws.com'),
+                managedPolicies: [
+                    cdk.aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+                ],
+                inlinePolicies: {
+                    // define the role for listObject, putObject, and deleteObject permissions from s3TextCachedBucket
+                    s3PdfCachedBucketPolicy: new cdk.aws_iam.PolicyDocument({
+                        statements: [
+                            new cdk.aws_iam.PolicyStatement({
+                                actions: ['textract:AnalyzeDocument', 'textract:StartDocumentAnalysis', 'textract:StartDocumentTextDetection'],
+                                resources: ['*'], // Assuming Textract does not support resource-level permissions
+                            }),
+                        ],
+                    }),
+                },
+            }),
         });
 
         // lambda function to receive and process Textract job completion notifications
@@ -110,6 +140,23 @@ export class AwsServerlessDataIngestionStack extends NestedStack {
             },
             projectRoot: path.join(__dirname, '../../../src/lambdas/textract-table-analysis/receive-textract-result'),
             depsLockFilePath: path.join(__dirname, '../../../src/lambdas/textract-table-analysis/receive-textract-result/package-lock.json'),
+            role: new cdk.aws_iam.Role(this, `${props.resourcePrefix}-textAnalysisResultLambdaFnInlineRole`, {
+                assumedBy: new cdk.aws_iam.ServicePrincipal('lambda.amazonaws.com'),
+                managedPolicies: [
+                    cdk.aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+                ],
+                inlinePolicies: {
+                    // define the role for listObject, putObject, and deleteObject permissions from s3TextCachedBucket
+                    s3TextCachedBucketPolicy: new cdk.aws_iam.PolicyDocument({
+                        statements: [
+                            new cdk.aws_iam.PolicyStatement({
+                                actions: ['textract:GetDocumentAnalysis', 'textract:GetDocumentTextDetection'],
+                                resources: ['*'], // Assuming Textract does not support resource-level permissions
+                            }),
+                        ],
+                    }),
+                },
+            }),
         });
 
         // grant permission for textractResultQueue to invoke textAnalysisResultLambdaFn
@@ -141,19 +188,6 @@ export class AwsServerlessDataIngestionStack extends NestedStack {
             enabled: true,
             maxBatchingWindow: cdk.Duration.seconds(60), // 60 seconds
         }));
-
-        // Define an IAM role for Amazon Textract service to access pfdFilesBucket
-        const textractServiceRole = new iam.Role(this, `${props.resourcePrefix}-TextractServiceRole`, {
-            assumedBy: new iam.ServicePrincipal('textract.amazonaws.com'),
-            managedPolicies: [
-                iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonTextractFullAccess'),
-            ],
-            roleName: `${props.resourcePrefix}-TextractServiceRole`,
-            description: 'IAM role for Amazon Textract service to access S3 buckets.',
-        });
-
-        // Grant Textract service role permissions to getObject and getObjectAcl from pfdFilesBucket
-        pfdFilesBucket.grantRead(textractServiceRole);
 
         // Configure S3 event notifications to send a message to textAnalysisQueue when a new object is created
         pfdFilesBucket.addEventNotification(s3.EventType.OBJECT_CREATED, new s3n.SqsDestination(textAnalysisQueue));

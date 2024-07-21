@@ -66,7 +66,7 @@ export const handler = async (event: SQSEvent): Promise<void> => {
                 const putObjectCommand = new PutObjectCommand({
                     Bucket: S3_JSON_FILES_BUCKET_NAME,
                     Key: `${objectKey}-documentPage.json`,
-                    Body: `${JSON.stringify(documentPage.text)}`,
+                    Body: documentPage.text,
                     ContentType: 'application/json'
                 });
                 await s3Client.send(putObjectCommand);

@@ -43,7 +43,6 @@ export class AwsServerlessDataTransformStack extends NestedStack {
         const s3FileUploadSnsTopic: sns.Topic = new sns.Topic(this, `${props.resourcePrefix}-s3FileUploadSnsTopic`, {
             topicName: `${props.resourcePrefix}-s3-file-upload-topic`,
             displayName: 'S3 File Upload Notifications',
-            fifo: false, // Standard SNS topic for better scalability
         });
 
         /**

@@ -8,7 +8,6 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as s3n from "aws-cdk-lib/aws-s3-notifications";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
-import { LlrtFunction } from "cdk-lambda-llrt";
 import { AwsServerlessDataIngestionStackProps } from "./AwsServerlessDataIngestionStackProps";
 import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 
@@ -53,8 +52,7 @@ export class AwsServerlessDataIngestionStack extends NestedStack {
         });
 
         // lambda function to start a Textract job for analyzing tables in a document
-        const textAnalysisLambdaFn = new LlrtFunction(this, `${props.resourcePrefix}-textAnalysisLambdaFn`, {
-            functionName: `${props.resourcePrefix}-textAnalysisLambdaFn`,
+        const textAnalysisLambdaFn = new NodejsFunction(this, `${props.resourcePrefix}-textAnalysisLambdaFn`, {
             runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
             entry: path.join(__dirname, '../../../src/lambdas/textract-table-analysis/create-request-queue/index.ts'),
             handler: 'handler',
@@ -78,6 +76,7 @@ export class AwsServerlessDataIngestionStack extends NestedStack {
                 target: 'ES2022',
                 format: OutputFormat.ESM,
                 forceDockerBundling: true,
+                externalModules: [],
             },
             projectRoot: path.join(__dirname, '../../../src/lambdas/textract-table-analysis/create-request-queue'),
             depsLockFilePath: path.join(__dirname, '../../../src/lambdas/textract-table-analysis/create-request-queue/package-lock.json'),
@@ -85,7 +84,6 @@ export class AwsServerlessDataIngestionStack extends NestedStack {
 
         // lambda function to receive and process Textract job completion notifications
         const textAnalysisResultLambdaFn = new NodejsFunction(this, `${props.resourcePrefix}-textAnalysisResultLambdaFn`, {
-            functionName: `${props.resourcePrefix}-textAnalysisResultLambdaFn`,
             runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
             entry: path.join(__dirname, '../../../src/lambdas/textract-table-analysis/receive-textract-result/index.ts'),
             handler: 'handler',

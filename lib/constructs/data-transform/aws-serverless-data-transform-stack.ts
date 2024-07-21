@@ -10,8 +10,7 @@ import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import * as s3n from "aws-cdk-lib/aws-s3-notifications";
 
 import { AwsServerlessDataTransformStackProps } from "./AwsServerlessDataTransformStackProps";
-import { OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
-import { LlrtFunction } from "cdk-lambda-llrt";
+import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import { PythonFunction } from "@aws-cdk/aws-lambda-python-alpha";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
@@ -95,15 +94,13 @@ export class AwsServerlessDataTransformStack extends NestedStack {
         );
 
         /**
-         * @type {LlrtFunction}
+         * @type {NodejsFunction}
          * @description Lambda function for S3 object transfer.
          */
-        const s3ObjectTransferLambdaFn: LlrtFunction = new LlrtFunction(this, `${props.resourcePrefix}-s3ObjectTransferLambdaFn`, {
-            functionName: `${props.resourcePrefix}-s3ObjectTransferLambdaFn`,
+        const s3ObjectTransferLambdaFn: NodejsFunction = new NodejsFunction(this, `${props.resourcePrefix}-s3ObjectTransferLambdaFn`, {
             runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
             entry: path.join(__dirname, '../../../src/lambdas/s3-file-transfer/index.ts'),
             handler: 'handler',
-            llrtVersion: 'latest',
             timeout: cdk.Duration.seconds(60), // one minute
             architecture: lambda.Architecture.ARM_64,
             runtimeManagementMode: lambda.RuntimeManagementMode.AUTO,
@@ -125,6 +122,7 @@ export class AwsServerlessDataTransformStack extends NestedStack {
                 target: 'ES2022',
                 format: OutputFormat.ESM,
                 forceDockerBundling: true,
+                externalModules: [],
             },
             projectRoot: path.join(__dirname, '../../../src/lambdas/s3-file-transfer'),
             depsLockFilePath: path.join(__dirname, '../../../src/lambdas/s3-file-transfer/package-lock.json'),
@@ -135,8 +133,7 @@ export class AwsServerlessDataTransformStack extends NestedStack {
          * @description Lambda function for file transformation.
          */
         const fileTransformLambdaFn: PythonFunction = new PythonFunction(this, `${props.resourcePrefix}-fileTransformLambdaFn`, {
-            functionName: `${props.resourcePrefix}-fileTransformLambdaFn`,
-            runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
+            runtime: cdk.aws_lambda.Runtime.PYTHON_3_11,
             entry: path.join(__dirname, '../../../src/lambdas/s3-file-transform'),
             handler: "handler",
             architecture: lambda.Architecture.ARM_64,

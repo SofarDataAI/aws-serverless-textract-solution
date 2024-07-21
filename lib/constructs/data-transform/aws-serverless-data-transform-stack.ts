@@ -87,6 +87,9 @@ export class AwsServerlessDataTransformStack extends NestedStack {
             },
         }));
 
+        // Grant permission for S3 bucket to publish to SNS topic
+        s3FileUploadSnsTopic.grantPublish(new iam.ServicePrincipal('s3.amazonaws.com'));
+
         // Configure S3 bucket to send notifications to SNS topic
         s3MasterFilesBucket.addEventNotification(
             s3.EventType.OBJECT_CREATED,
@@ -122,7 +125,6 @@ export class AwsServerlessDataTransformStack extends NestedStack {
                 target: 'ES2022',
                 format: OutputFormat.ESM,
                 forceDockerBundling: true,
-                externalModules: [],
             },
             projectRoot: path.join(__dirname, '../../../src/lambdas/s3-file-transfer'),
             depsLockFilePath: path.join(__dirname, '../../../src/lambdas/s3-file-transfer/package-lock.json'),

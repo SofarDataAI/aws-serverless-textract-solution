@@ -76,7 +76,6 @@ export class AwsServerlessDataIngestionStack extends NestedStack {
                 target: 'ES2022',
                 format: OutputFormat.ESM,
                 forceDockerBundling: true,
-                externalModules: [],
             },
             projectRoot: path.join(__dirname, '../../../src/lambdas/textract-table-analysis/create-request-queue'),
             depsLockFilePath: path.join(__dirname, '../../../src/lambdas/textract-table-analysis/create-request-queue/package-lock.json'),

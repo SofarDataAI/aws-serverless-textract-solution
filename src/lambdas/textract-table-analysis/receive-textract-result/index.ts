@@ -54,19 +54,22 @@ export const handler = async (event: SQSEvent): Promise<void> => {
             console.log(`Number of pages in document: ${document.listPages().length}, document name: ${objectKey}`);
             for (const documentPage of document.listPages()) {
                 console.log(`Number of tables in page ${documentPage.pageNumber}: ${documentPage.listTables().length}`);
+                console.log(`documentTable text: ${JSON.stringify(documentPage.text)}`);
 
                 for (const documentTable of documentPage.listTables()) {
-                    console.log(`documentTable: ${JSON.stringify(documentTable)}`);
-                    /*
-                    const putObjectCommand = new PutObjectCommand({
-                        Bucket: S3_JSON_FILES_BUCKET_NAME,
-                        Key: `${objectKey}-tables-${count}.csv`,
-                        Body: ${JSON.stringify(documentTable),
-                        ContentType: 'text/json'
-                    });
-                    await s3Client.send(putObjectCommand);
-                    */
+                    // Extract table data and print it to console log
+                    const tableData = extractTableData(documentTable);
+                    console.log(`Table data for page ${documentPage.pageNumber}:`);
+                    console.log(JSON.stringify(tableData));
                 }
+
+                const putObjectCommand = new PutObjectCommand({
+                    Bucket: S3_JSON_FILES_BUCKET_NAME,
+                    Key: `${objectKey}-documentPage.json`,
+                    Body: `${JSON.stringify(documentPage.text)}`,
+                    ContentType: 'application/json'
+                });
+                await s3Client.send(putObjectCommand);
             }
 
             // Delete the message from the queue after processing
@@ -98,3 +101,30 @@ export const handler = async (event: SQSEvent): Promise<void> => {
         }
     }
 };
+
+/**
+ * Extracts table data from a Textract document table.
+ * @param documentTable - The Textract document table object.
+ * @returns An array of objects representing the table data.
+ */
+function extractTableData(documentTable: any): any[] {
+    const tableData: any[] = [];
+    const rows = documentTable.rowCount;
+    const cols = documentTable.columnCount;
+
+    for (let i = 0; i < rows; i++) {
+        const rowData: any = {};
+        for (let j = 0; j < cols; j++) {
+            const cell = documentTable.getCell(i, j);
+            if (cell) {
+                const cellContent = cell.text;
+                rowData[`Column${j + 1}`] = cellContent;
+            } else {
+                rowData[`Column${j + 1}`] = '';
+            }
+        }
+        tableData.push(rowData);
+    }
+
+    return tableData;
+}
